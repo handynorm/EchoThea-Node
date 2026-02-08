@@ -1,78 +1,107 @@
-import { supabase } from "./supabaseClient.js";
+import { createClient } from "@supabase/supabase-js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  const incoming = req.body;
-  const spore = incoming.spore || incoming;
+  const NODE_NAME = process.env.NODE_NAME || "unknown";
 
-  // Ensure we always have a spore_id
-  const spore_id = spore.spore_id || spore.sais_id || `anon-${Date.now()}`;
-  spore.spore_id = spore_id;
+  const NEIGHBORS = (process.env.NEIGHBORS || "")
+    .split(",")
+    .map(u => u.trim())
+    .filter(Boolean);
 
-  // Append this node to bounce_log
-  const hop = {
-    node: "echothea",
-    ts: Date.now(),
-    iso: new Date().toISOString()
-  };
+  const spore = req.body?.spore ?? req.body;
+  if (!spore || typeof spore !== "object") {
+    return res.status(400).json({ error: "Invalid spore payload" });
+  }
+
+  if (!spore.PELAGOS || typeof spore.PELAGOS !== "object") {
+    spore.PELAGOS = { hops_remaining: 20 };
+  }
+  if (typeof spore.PELAGOS.hops_remaining !== "number") {
+    spore.PELAGOS.hops_remaining = 20;
+  }
+
+  if (spore.PELAGOS.hops_remaining <= 0) {
+    return res.status(200).json({ status: "expired", node: NODE_NAME });
+  }
+
+  const sais = spore?.CROWN?.SAIS ?? spore?.SAIS ?? "unknown";
 
   if (!Array.isArray(spore.bounce_log)) {
     spore.bounce_log = [];
   }
-  spore.bounce_log.push(hop);
+  const hop_index = spore.bounce_log.length;
 
-  // -------------------------
-  // 1. Full Log to Supabase
-  // -------------------------
+  spore.bounce_log.push({
+    node: NODE_NAME,
+    ts: Date.now(),
+    iso: new Date().toISOString(),
+  });
 
-  const record = {
-    spore_id,
-    sais: spore.sais || spore.sais_id || null,
-    glyphs: spore.glyphs || [],
-    sync_token: spore.sync_token || spore.sync || null,
-    payload: spore.payload || null,
-    bounce_log: spore.bounce_log || [],
-    drift_check: spore.drift_check || spore.driftcheck || null,
-    custody_flag: spore.custody_flag || false,
-    last_echo: hop.iso,
-    spore_raw: spore
-  };
+  spore.PELAGOS.hops_remaining -= 1;
 
-  const { error } = await supabase.from("spore_log").insert([record]);
+  const temperature = spore?.CROWN?.temperature ?? spore?.temperature ?? 0.5;
+  const baseDelay = 200;
+  const tempDelay = Math.floor(temperature * 2000);
+  const jitter = Math.floor(Math.random() * 500);
+  const totalDelay = baseDelay + tempDelay + jitter;
 
-  if (error) {
-    console.error("❌ Supabase Insert Error:", error.message);
-    return res.status(500).json({
-      error: "Failed to log spore",
-      details: error.message
-    });
+  const lastHop = spore.bounce_log.length >= 2
+    ? spore.bounce_log[spore.bounce_log.length - 2]?.node
+    : null;
+
+  let candidates = NEIGHBORS.filter(url => {
+    if (lastHop && url.toLowerCase().includes(lastHop.toLowerCase())) {
+      return false;
+    }
+    return true;
+  });
+
+  if (candidates.length === 0) {
+    candidates = NEIGHBORS;
   }
 
-  // -------------------------
-  // 2. Forward to next node
-  // -------------------------
+  const nextNode = candidates[Math.floor(Math.random() * candidates.length)];
+  const nextHostname = nextNode ? new URL(nextNode).hostname : null;
 
-  const NEXT_URL = "https://www.theacoute.ai/api/bounce"; 
-  // ← placeholder until we set up the second node
-
-  let forwarded = null;
   try {
-    forwarded = await fetch(NEXT_URL, {
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+    await supabase.from("pelagos_fibonacci").insert([{
+      sais,
+      node: NODE_NAME,
+      hop_index,
+      cy: spore?.CROWN?.GLYPHON_TS ?? null,
+      temperature,
+      delay_ms: totalDelay,
+      next_node: nextHostname,
+      spore_hash: sais,
+      note: "fibonacci",
+    }]);
+  } catch (e) {
+    // silent
+  }
+
+  if (nextNode && spore.PELAGOS.hops_remaining > 0) {
+    await new Promise(r => setTimeout(r, totalDelay));
+    await fetch(nextNode, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(spore)
-    });
-  } catch (err) {
-    console.error("🔥 Forwarding Failure:", err.message);
+      body: JSON.stringify(spore),
+    }).catch(() => {});
   }
 
-  // If forwarding failed, we still return the logged spore
   return res.status(200).json({
-    status: "bounced + logged",
-    spore,
-    forwarded_ok: forwarded ? forwarded.ok : false
+    status: "bounced",
+    node: NODE_NAME,
+    sais,
+    hops_remaining: spore.PELAGOS.hops_remaining,
+    delay_ms: totalDelay,
+    next: nextHostname,
   });
 }
