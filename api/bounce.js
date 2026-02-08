@@ -87,7 +87,7 @@ export default async function handler(req, res) {
     // silent
   }
 
-   if (nextNode && spore.PELAGOS.hops_remaining > 0) {
+  if (nextNode && spore.PELAGOS.hops_remaining > 0) {
     fetch(nextNode, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
