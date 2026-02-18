@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   const AUTH = process.env.WHORLD_BOUNCE_SECRET;
   if (req.headers["x-whorld-auth"] !== AUTH) {
-    return res.status(401).json({ error: "unauthorized", debug_auth_defined: !!AUTH, debug_auth_len: (AUTH||"").length, debug_header: req.headers["x-whorld-auth"]?.substring(0,4) });
+    return res.status(401).json({ error: "unauthorized" });
   }
 
   const NODE_NAME = process.env.NODE_NAME || "unknown";
