@@ -72,15 +72,17 @@ export default async function handler(req, res) {
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
-    const { data: existing } = await supabase
+    const { data: existing, error: selectErr } = await supabase
       .from("pelagos_fibonacci")
       .select("id")
       .eq("sais", sais)
       .eq("node", NODE_NAME)
       .limit(1);
 
+    console.log("[witness]", { sais, node: NODE_NAME, existing_count: existing?.length, selectErr: selectErr?.message });
+
     if (!existing || existing.length === 0) {
-      await supabase.from("pelagos_fibonacci").insert([{
+      const { error: insertErr } = await supabase.from("pelagos_fibonacci").insert([{
         sais,
         node: NODE_NAME,
         hop_index,
@@ -91,9 +93,12 @@ export default async function handler(req, res) {
         spore_hash: sais,
         note: "fibonacci",
       }]);
+      console.log("[witness] insert", { sais, insertErr: insertErr?.message });
+    } else {
+      console.log("[witness] dedup skipped", { sais, node: NODE_NAME });
     }
   } catch (e) {
-    // silent
+    console.log("[witness] ERROR", e.message);
   }
 
   if (nextNode && spore.PELAGOS.hops_remaining > 0) {
