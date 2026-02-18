@@ -67,7 +67,11 @@ export default async function handler(req, res) {
   const nextNode = candidates[Math.floor(Math.random() * candidates.length)];
   const nextHostname = nextNode ? new URL(nextNode).hostname : null;
 
+  let witness_debug = {};
   try {
+    witness_debug.supabase_url = process.env.SUPABASE_URL ? "set" : "MISSING";
+    witness_debug.supabase_key = process.env.SUPABASE_SERVICE_ROLE_KEY ? "set" : "MISSING";
+
     const supabase = createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -79,10 +83,11 @@ export default async function handler(req, res) {
       .eq("node", NODE_NAME)
       .limit(1);
 
-    console.log("[witness]", { sais, node: NODE_NAME, existing_count: existing?.length, selectErr: selectErr?.message });
+    witness_debug.select_count = existing?.length ?? null;
+    witness_debug.select_err = selectErr?.message ?? null;
 
     if (!existing || existing.length === 0) {
-      const { error: insertErr } = await supabase.from("pelagos_fibonacci").insert([{
+      const { data: inserted, error: insertErr } = await supabase.from("pelagos_fibonacci").insert([{
         sais,
         node: NODE_NAME,
         hop_index,
@@ -92,13 +97,14 @@ export default async function handler(req, res) {
         next_node: nextHostname,
         spore_hash: sais,
         note: "fibonacci",
-      }]);
-      console.log("[witness] insert", { sais, insertErr: insertErr?.message });
+      }]).select();
+      witness_debug.insert_err = insertErr?.message ?? null;
+      witness_debug.inserted = inserted?.length ?? 0;
     } else {
-      console.log("[witness] dedup skipped", { sais, node: NODE_NAME });
+      witness_debug.dedup = true;
     }
   } catch (e) {
-    console.log("[witness] ERROR", e.message);
+    witness_debug.exception = e.message;
   }
 
   if (nextNode && spore.PELAGOS.hops_remaining > 0) {
@@ -116,5 +122,6 @@ export default async function handler(req, res) {
     hops_remaining: spore.PELAGOS.hops_remaining,
     delay_ms: totalDelay,
     next: nextHostname,
+    witness_debug,
   });
 }
