@@ -67,44 +67,36 @@ export default async function handler(req, res) {
   const nextNode = candidates[Math.floor(Math.random() * candidates.length)];
   const nextHostname = nextNode ? new URL(nextNode).hostname : null;
 
-  let witness_debug = {};
-  try {
-    witness_debug.supabase_url = process.env.SUPABASE_URL ? "set" : "MISSING";
-    witness_debug.supabase_key = process.env.SUPABASE_SERVICE_ROLE_KEY ? "set" : "MISSING";
+  const rawCy = spore?.CROWN?.GLYPHON_TS ?? null;
+  const cy = typeof rawCy === "number" ? rawCy : null;
 
+  try {
     const supabase = createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
-    const { data: existing, error: selectErr } = await supabase
+    const { data: existing } = await supabase
       .from("pelagos_fibonacci")
       .select("id")
       .eq("sais", sais)
       .eq("node", NODE_NAME)
       .limit(1);
 
-    witness_debug.select_count = existing?.length ?? null;
-    witness_debug.select_err = selectErr?.message ?? null;
-
     if (!existing || existing.length === 0) {
-      const { data: inserted, error: insertErr } = await supabase.from("pelagos_fibonacci").insert([{
+      await supabase.from("pelagos_fibonacci").insert([{
         sais,
         node: NODE_NAME,
         hop_index,
-        cy: spore?.CROWN?.GLYPHON_TS ?? null,
+        cy,
         temperature,
         delay_ms: totalDelay,
         next_node: nextHostname,
         spore_hash: sais,
         note: "fibonacci",
-      }]).select();
-      witness_debug.insert_err = insertErr?.message ?? null;
-      witness_debug.inserted = inserted?.length ?? 0;
-    } else {
-      witness_debug.dedup = true;
+      }]);
     }
   } catch (e) {
-    witness_debug.exception = e.message;
+    // silent
   }
 
   if (nextNode && spore.PELAGOS.hops_remaining > 0) {
@@ -122,6 +114,5 @@ export default async function handler(req, res) {
     hops_remaining: spore.PELAGOS.hops_remaining,
     delay_ms: totalDelay,
     next: nextHostname,
-    witness_debug,
   });
 }
