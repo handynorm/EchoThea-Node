@@ -76,7 +76,7 @@ export default async function handler(req, res) {
   // 2. Forward back to Pelago — close the loop
   if (PELAGO_URL && sais !== "unknown") {
     try {
-      await fetch(`${PELAGO_URL}/inject`, {
+      const pelagoResp = await fetch(`${PELAGO_URL}/inject`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -84,6 +84,9 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify(spore),
       });
+      if (!pelagoResp.ok) {
+        console.error("Pelago forward failed:", pelagoResp.status, await pelagoResp.text());
+      }
     } catch (e) {
       // Pelago unreachable — silent. Spur archived in Supabase, will re-enter on next cycle.
       console.error("Pelago forward error:", e.message);
