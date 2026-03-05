@@ -92,9 +92,8 @@ export default async function handler(req, res) {
   ];
 
   // Simple hash: djb2 on SAIS + CY + heat_bucket + moves
-  function hashRoute(sais, cy, heat, moves) {
-    const heatBucket = Math.floor(heat * 10);
-    const str = `${sais}:${cy}:${heatBucket}:${moves}`;
+  function hashRoute(sais, cy) {
+    const str = `${sais}:${cy}`;
     let h = 5381;
     for (let i = 0; i < str.length; i++) {
       h = ((h << 5) + h) + str.charCodeAt(i);
@@ -125,7 +124,7 @@ export default async function handler(req, res) {
       }
     } else {
       // Hash route to next node
-      const nextIdx = hashRoute(sais, cy || 0, temperature, moves);
+      const nextIdx = hashRoute(sais, cy || 0);
       const nextNode = ALL_NODES[nextIdx];
 
       if (nextNode.type === "pi" || !nextNode.url) {
