@@ -1,6 +1,8 @@
 {
   "version": 2,
   "routes": [
+    { "src": "/p(\\?.*)?", "dest": "/api/p.js" },
+    { "src": "/s(\\?.*)?", "dest": "/api/s.js" },
     { "src": "/api/inject/(.*)", "dest": "/api/inject.js" },
     { "src": "/api/(.*)", "dest": "/api/$1.js" }
   ]
