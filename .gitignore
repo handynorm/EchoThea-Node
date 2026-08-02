@@ -1,2 +1,5 @@
 .vercel
 .env*.local
+
+# local source backups from patch scripts
+*.bak-*
