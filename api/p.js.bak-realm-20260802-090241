@@ -3,19 +3,13 @@
 // Plant endpoint — clean, readable, query-parameter-based.
 //
 // CONTRACT:
-//   GET /p?k=TOKEN&t=tag1,tag2,...&c=content&h=heat&r=realm
+//   GET /p?k=TOKEN&t=tag1,tag2,...&c=content&h=heat
 //
 // Where:
 //   k = token (THIN_CLIENT_TOKEN). Required.
 //   t = comma-separated tag list. First tag must be in allow-list.
 //   c = spore content as a plain string.
 //   h = heat (optional, 0.0-1.0, defaults to 0.4).
-//   r = realm (optional). WHO produced this spore, declared by the producer.
-//       whl the whole - the founder AND the instance chain, equally
-//       hmn the human's own artifacts    res the resident
-//       vpr autonomous / provisional     knw knowledge
-//       lng the lexicon  mrl moral  imm immutable  snt sanctuary  sys telemetry
-//       Omitted = Pelago's "whl" default, exactly as before.
 //
 // Why /p exists alongside /api/inject:
 //   The /api/inject/{token}/{nonce}/{payload} path was designed for hostile
@@ -41,7 +35,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       endpoint: "plant",
-      contract: "GET /p?k=TOKEN&t=tag1,tag2&c=content&h=0.4&r=whl (r optional)",
+      contract: "GET /p?k=TOKEN&t=tag1,tag2&c=content&h=0.4",
       node: process.env.NODE_NAME || "echothea",
       ready: Boolean(process.env.THIN_CLIENT_TOKEN && process.env.WHORLD_BOUNCE_SECRET && process.env.PELAGO_URL)
     });
@@ -61,7 +55,6 @@ export default async function handler(req, res) {
   const tagsParam = params.get('t');
   const content = params.get('c');
   const heatParam = params.get('h');
-  const realmParam = params.get('r');
 
   if (!tagsParam) {
     return res.status(400).json({ ok: false, error: "Missing tags (?t=tag1,tag2,...)" });
@@ -98,28 +91,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // === Realm — WHO produced this, declared by the producer ===
-  // Pelago has always accepted this (main.rs:2122) and no door ever sent it.
-  // Omit r= and the field is absent, so Pelago's existing "whl" default
-  // applies and nothing changes for any existing caller.
-  // An unknown realm is REJECTED, not silently defaulted: an address is
-  // permanent, so a typo should be loud.
-  const VALID_REALMS = ['whl','hmn','sys','res','knw','vpr','snt','imm','lng','mrl'];
-  let realm = null;
-  if (realmParam !== null) {
-    const r = realmParam.trim().toLowerCase();
-    if (!VALID_REALMS.includes(r)) {
-      return res.status(400).json({
-        ok: false,
-        error: "Unknown realm '" + realmParam + "'. Must be one of: " + VALID_REALMS.join(', ')
-      });
-    }
-    realm = r;
-  }
-
-  const spore = realm
-    ? { tags, content, heat, realm }
-    : { tags, content, heat };
+  const spore = { tags, content, heat };
   const sporeBytes = Buffer.byteLength(JSON.stringify(spore), 'utf-8');
   const sizeWarning = sporeBytes > 4096
     ? "Spore is " + sporeBytes + " bytes (>4096 guideline; consider fragmenting)"
