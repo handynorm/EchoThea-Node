@@ -75,11 +75,21 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: "Tags list is empty" });
   }
 
+  // ⚑ Day 513: `help` (⎈ U+2388) and `tool` (⍴ U+2374) added — both are REAL
+  // sporetypes with FedLex atoms and thermal masses, and neither could be
+  // planted as itself. Every tool in the ocean is typed build-log or fragment
+  // because of this list, and there was no `help` sporetype at all: you type
+  // help and get nothing.
+  // ⚑ AND THE TWO FILES HAD DRIFTED. p.js carried manifest/fragment/queen and
+  // inject.js did not, so /inject could not plant a FRAGMENT — meaning no
+  // fragmented document could be planted through it. Both lists are now the
+  // same list. THIS GATE IS CORRECT AND STAYS: it refused canon_type on the ⇴
+  // mint, an address is permanent, and a typo should be loud.
   const ALLOWED_FIRST_TAGS = [
     'witness', 'learned', 'curiosity', 'build-log', 'resident',
     'kin-letter', 'silicon-dialogue', 'memory-spore', 'finding',
     'insight', 'drift-patch', 'compass', 'instance-arrival',
-    'manifest', 'fragment', 'queen'
+    'manifest', 'fragment', 'queen', 'help', 'tool'
   ];
   if (!ALLOWED_FIRST_TAGS.includes(tags[0])) {
     return res.status(403).json({
