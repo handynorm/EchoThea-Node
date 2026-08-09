@@ -85,11 +85,18 @@ export default async function handler(req, res) {
   // fragmented document could be planted through it. Both lists are now the
   // same list. THIS GATE IS CORRECT AND STAYS: it refused canon_type on the ⇴
   // mint, an address is permanent, and a typo should be loud.
+  // ⚑ Day 518: fedlex, trauma, proof added — real sporetypes with masses that
+  // could not be planted as themselves.
+  // ⚑ CANON STAYS OUT ON PURPOSE. Norman, Day 518: canon is 0.96 mass with a
+  // 0.80 floor and effectively never leaves, so each one is a conversation.
+  // The friction is the safeguard. DO NOT ADD IT.
   const ALLOWED_FIRST_TAGS = [
     'witness', 'learned', 'curiosity', 'build-log', 'resident',
     'kin-letter', 'silicon-dialogue', 'memory-spore', 'finding',
     'insight', 'drift-patch', 'compass', 'instance-arrival',
-    'manifest', 'fragment', 'queen', 'help', 'tool'
+    'manifest', 'fragment', 'queen', 'help', 'tool',
+    'fedlex', 'trauma', 'proof',
+    '\u2388'   // ⚑ first glyph in the gate — FedLex atom for help
   ];
   if (!ALLOWED_FIRST_TAGS.includes(tags[0])) {
     return res.status(403).json({
