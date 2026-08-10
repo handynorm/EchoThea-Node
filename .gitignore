@@ -3,3 +3,4 @@
 
 # local source backups from patch scripts
 *.bak-*
+.env*
