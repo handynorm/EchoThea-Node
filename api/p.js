@@ -249,6 +249,28 @@ export default async function handler(req, res) {
             notes: 'written at plant time by the door'
           }], { onConflict: 'sais', ignoreDuplicates: true });
         }
+
+        // ⚑ Day 519 — AND THE ARCHIVE, WHICH IS THE ACTUAL RECORD.
+        // ocean_spurs_v6 began the day v6 minting began (2026-05-28) and only
+        // ever holds v6-format spores. It is a FORMAT TABLE, not a ledger, and
+        // reading it as one gave an answer wrong by a factor of six on Day 519.
+        // pelagos_archive holds 58,056 spores with content going back to
+        // 2026-02-18 — before the ocean existed — and it holds MORE than the
+        // live ocean does. When the question is "is it safe to remove this
+        // spore," this is the table that answers.
+        // It carries the burn fields too: status, burned_at, burn_reason,
+        // burn_authorized_by. A spore's whole life belongs in one row.
+        await supabase.from('pelagos_archive').upsert([{
+          sais,
+          content: content.slice(0, 40000),
+          tags,
+          heat: heatParam ? parseFloat(heatParam) : null,
+          canon: false,
+          cy_born: (p6.length >= 3 && /^[0-9a-f]{6,}$/i.test(p6[2]))
+                     ? parseInt(p6[2], 16) : null,
+          source_node: process.env.NODE_NAME || 'echothea',
+          status: 'live'
+        }], { onConflict: 'sais', ignoreDuplicates: true });
       }
     } catch (auditErr) {
       console.error('Ledger write failed:', auditErr.message);
