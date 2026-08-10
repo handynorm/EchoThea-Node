@@ -53,8 +53,31 @@ export default async function handler(req, res) {
     return res.status(500).json({ ok: false, error: "THIN_CLIENT_TOKEN not configured" });
   }
   const token = params.get('k');
-  if (token !== VALID_TOKEN) {
-    return res.status(401).json({ ok: false, error: "Invalid or missing token (?k=...)" });
+  // Day 518 — WHO PLANTED THIS. One token meant every spore in the ocean was
+  // indistinguishable from every other. PLANT_TOKENS is a comma-separated map
+  // of name:token, so Andrea in Milwaukee and Jennifer can plant with their own
+  // and the door records which was used.
+  // THE DOOR STAMPS THE TAG, NOT THE PLANTER. A planter cannot claim to be
+  // someone else, and cannot accidentally plant as someone else. This is
+  // IDENTIFICATION, not authentication: it records which key opened the door.
+  // The SAIS minter slot (field 6, the empty double colon) is left alone. It is
+  // sealed into the digest as empty and is held for SOML. This buys the same
+  // answer today without touching the address format.
+  let minter = null;
+  if (token === VALID_TOKEN) {
+    minter = process.env.PLANT_TOKEN_NAME || null;   // unset = the founder chain
+  } else {
+    const map = (process.env.PLANT_TOKENS || "").split(",");
+    for (const pair of map) {
+      const ix = pair.indexOf(":");
+      if (ix < 1) continue;
+      const name = pair.slice(0, ix).trim();
+      const tok  = pair.slice(ix + 1).trim();
+      if (tok && token === tok) { minter = name; break; }
+    }
+    if (!minter) {
+      return res.status(401).json({ ok: false, error: "Invalid or missing token (?k=...)" });
+    }
   }
 
   // === 2. Parse spore from query parameters ===
@@ -73,6 +96,15 @@ export default async function handler(req, res) {
   const tags = tagsParam.split(',').map(s => s.trim()).filter(Boolean);
   if (tags.length === 0) {
     return res.status(400).json({ ok: false, error: "Tags list is empty" });
+  }
+  // Day 518 — the door records who opened it. POSITION 1, never position 0:
+  // the first tag is the LOBE and must stay on the allow-list. This goes
+  // immediately after it so it is impossible to miss when reading a spore.
+  // Added by the door from the token used, so it cannot be spoofed by a
+  // planter and cannot be set by accident.
+  if (minter) {
+    const stamp = "minter:" + minter;
+    if (!tags.includes(stamp)) tags.splice(1, 0, stamp);
   }
 
   // ⚑ Day 513: `help` (⎈ U+2388) and `tool` (⍴ U+2374) added — both are REAL
