@@ -211,8 +211,47 @@ export default async function handler(req, res) {
         user_agent: req.headers['user-agent'] || null,
         created_at: new Date().toISOString()
       }]);
+      // Day 519 — WRITE THE SPORE TO THE LEDGER NOW, NOT IN AN HOUR.
+      // The harvest ran hourly. Between a plant and the next harvest a spore
+      // existed in Pelago memory and NOWHERE ELSE, and a restart in that window
+      // erased it. MEASURED: a compass planted at 07:47:35 was gone from every
+      // live path by the 08:00 harvest, recoverable only from a disk snapshot.
+      // ⚑ THE LEDGER IS NOT A BOOT PATH AND MUST NEVER BECOME ONE. Nothing
+      // loads from it. It exists to prove a spore existed and to make the
+      // corpus queryable — Norman, Day 519: "the reason those tables ever
+      // existed was to prove the spores existed, because in motion I could not
+      // prove it." The ocean is memory. This is the record of what passed
+      // through it. Different jobs.
+      // A failure here does NOT fail the plant. Losing a ledger row is better
+      // than refusing a plant.
+      // Column list read from information_schema before writing this — SIX of
+      // these are NOT NULL and would have failed silently inside this catch.
+      // v6 shape: realm:lobe:glyphon:subglyphon:semantic:unique::digest
+      if (sais) {
+        const p6 = sais.split(':');
+        const hexOr = (v) => (v && /^[0-9a-f]+$/i.test(v)) ? parseInt(v, 16) : 0;
+        if (p6.length >= 6) {
+          await supabase.from('ocean_spurs_v6').upsert([{
+            sais,
+            realm: p6[0],
+            lobe: p6[1],
+            glyphon: hexOr(p6[2]),
+            glyphon_hex: p6[2] || '',
+            subglyphon: hexOr(p6[3]),
+            subglyphon_hex: p6[3] || '',
+            semantic: p6[4] || '',
+            unique_hash: p6[5] || '',
+            minter: '',
+            digest: p6[p6.length - 1] || '',
+            tags,
+            content: content.slice(0, 20000),
+            heat: heatParam ? parseFloat(heatParam) : null,
+            notes: 'written at plant time by the door'
+          }], { onConflict: 'sais', ignoreDuplicates: true });
+        }
+      }
     } catch (auditErr) {
-      console.error('Audit trail write failed:', auditErr.message);
+      console.error('Ledger write failed:', auditErr.message);
     }
 
     return res.status(200).json({
