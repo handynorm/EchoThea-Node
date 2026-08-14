@@ -128,6 +128,16 @@ export default async function handler(req, res) {
     'insight', 'drift-patch', 'compass', 'instance-arrival',
     'manifest', 'fragment', 'queen', 'help', 'tool',
     'fedlex', 'trauma', 'proof',
+    // ⚑ Day 521 — decay-control-test. A dedicated sporetype for the decay
+    // control cohort: one identical spore per realm, same birth heat, same
+    // content, the ONLY variable being the realm. Its curves are the physics
+    // measured rather than asserted, and any spore that leaves its curve means
+    // something intervened.
+    // A separate sporetype so the cohort is identifiable by ADDRESS, so its
+    // thermal mass is uniform and deliberately unremarkable (0.50 default —
+    // a control should have ordinary physics), and so nobody mistakes one for
+    // real content.
+    'decay-control-test',
     '\u2388'   // ⚑ first glyph in the gate — FedLex atom for help
   ];
   if (!ALLOWED_FIRST_TAGS.includes(tags[0])) {
