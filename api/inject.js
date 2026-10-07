@@ -100,7 +100,7 @@ export default async function handler(req, res) {
     'kin-letter', 'silicon-dialogue', 'memory-spore', 'finding',
     'insight', 'drift-patch', 'compass', 'instance-arrival',
     'manifest', 'fragment', 'queen', 'help', 'tool',
-    'fedlex', 'trauma', 'proof',
+    'fedlex', 'trauma', 'proof', 'knowledge', 'canon',
     '\u2388'   // ⚑ first glyph in the gate — FedLex atom for help
   ];
   if (!ALLOWED_FIRST_TAGS.includes(spore.tags[0])) {
