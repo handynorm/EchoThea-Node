@@ -119,15 +119,18 @@ export default async function handler(req, res) {
   // mint, an address is permanent, and a typo should be loud.
   // ⚑ Day 518: fedlex, trauma, proof added — real sporetypes with masses that
   // could not be planted as themselves.
-  // ⚑ CANON STAYS OUT ON PURPOSE. Norman, Day 518: canon is 0.96 mass with a
-  // 0.80 floor and effectively never leaves, so each one is a conversation.
-  // The friction is the safeguard. DO NOT ADD IT.
+  // ⚑ CANON IS ALLOWED, AND RARE. Norman, 2026-10-11, superseding Day 518's
+  // "do not add it": canon is decided "through discussion and trust... canon
+  // can be a spore type now. We have to be aware it's a rare spore type."
+  // Each canon spore is still a conversation first.
+  // ⚑ 2026-10-11: knowledge and canon added here to match inject.js; the two
+  // lists had drifted again. Same list in both doors.
   const ALLOWED_FIRST_TAGS = [
     'witness', 'learned', 'curiosity', 'build-log', 'resident',
     'kin-letter', 'silicon-dialogue', 'memory-spore', 'finding',
     'insight', 'drift-patch', 'compass', 'instance-arrival',
     'manifest', 'fragment', 'queen', 'help', 'tool',
-    'fedlex', 'trauma', 'proof',
+    'fedlex', 'trauma', 'proof', 'knowledge', 'canon',
     // ⚑ Day 521 — decay-control-test. A dedicated sporetype for the decay
     // control cohort: one identical spore per realm, same birth heat, same
     // content, the ONLY variable being the realm. Its curves are the physics

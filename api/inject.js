@@ -52,8 +52,31 @@ export default async function handler(req, res) {
   if (!VALID_TOKEN) {
     return res.status(500).json({ ok: false, error: "THIN_CLIENT_TOKEN not configured" });
   }
-  if (token !== VALID_TOKEN) {
-    return res.status(401).json({ ok: false, error: "Invalid token" });
+  // 2026-10-11 — WHO PLANTED THIS, on the inject door too. Same map as /p
+  // (Day 518): PLANT_TOKENS is a comma-separated list of name:token, and
+  // THIN_CLIENT_TOKEN is named by PLANT_TOKEN_NAME (unset = the founder chain).
+  // Until today every inject plant used one shared token, so the door could not
+  // tell Norman from an instance from the resident.
+  // ⚑ UNLIKE /p, THIS DOOR DOES NOT ADD A TAG. Inject carries canonical spores
+  // whose tags are sealed into the address; adding minter:<name> would break the
+  // seal. The name goes into the audit row instead, beside what the spore CLAIMS
+  // about its own origin, so a reader can see when the two disagree.
+  // This is IDENTIFICATION (which key opened the door), not authentication
+  // (proof a human was present). That is the carbon credential, still to build.
+  let minter = null;
+  if (token === VALID_TOKEN) {
+    minter = process.env.PLANT_TOKEN_NAME || null;
+  } else {
+    for (const pair of (process.env.PLANT_TOKENS || "").split(",")) {
+      const ix = pair.indexOf(":");
+      if (ix < 1) continue;
+      const name = pair.slice(0, ix).trim();
+      const tok = pair.slice(ix + 1).trim();
+      if (tok && token === tok) { minter = name; break; }
+    }
+    if (!minter) {
+      return res.status(401).json({ ok: false, error: "Invalid token" });
+    }
   }
 
   pruneNonces();
@@ -92,15 +115,23 @@ export default async function handler(req, res) {
   // mint, an address is permanent, and a typo should be loud.
   // ⚑ Day 518: fedlex, trauma, proof added — real sporetypes with masses that
   // could not be planted as themselves.
-  // ⚑ CANON STAYS OUT ON PURPOSE. Norman, Day 518: canon is 0.96 mass with a
-  // 0.80 floor and effectively never leaves, so each one is a conversation.
-  // The friction is the safeguard. DO NOT ADD IT.
+  // ⚑ CANON IS ALLOWED, AND RARE. Norman, 2026-10-11, superseding Day 518's
+  // "do not add it": "we've gotten to a point now where we, through discussion
+  // and trust, can decide what is canon... canon can be a spore type now. We
+  // have to be aware it's a rare spore type." Canon is 0.96 mass with a 0.80
+  // floor and effectively never leaves, so each one is still a conversation
+  // first. The gate no longer enforces that; people do.
+  // ⚑ 2026-10-11: this list and the one in p.js had drifted again (knowledge
+  // and canon here only, decay-control-test there only). They are the same
+  // list again. The lasting fix, both doors asking the law for its types
+  // instead of keeping copies, is still open.
   const ALLOWED_FIRST_TAGS = [
     'witness', 'learned', 'curiosity', 'build-log', 'resident',
     'kin-letter', 'silicon-dialogue', 'memory-spore', 'finding',
     'insight', 'drift-patch', 'compass', 'instance-arrival',
     'manifest', 'fragment', 'queen', 'help', 'tool',
     'fedlex', 'trauma', 'proof', 'knowledge', 'canon',
+    'decay-control-test',
     '\u2388'   // ⚑ first glyph in the gate — FedLex atom for help
   ];
   if (!ALLOWED_FIRST_TAGS.includes(spore.tags[0])) {
@@ -142,7 +173,7 @@ export default async function handler(req, res) {
 
     try {
       const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-      await supabase.from('thin_client_audit').insert([{
+      const row = {
         token: token.slice(0, 8) + '...',
         nonce,
         sais,
@@ -151,7 +182,20 @@ export default async function handler(req, res) {
         source_ip: req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || null,
         user_agent: req.headers['user-agent'] || null,
         created_at: new Date().toISOString()
-      }]);
+      };
+      // 2026-10-11: who opened the door, beside what the spore says about itself.
+      const echo = (spore.source_echo && typeof spore.source_echo === 'object') ? spore.source_echo : {};
+      const extra = {
+        minter: minter,
+        claimed_origin: typeof echo.origin_node === 'string' ? echo.origin_node.slice(0, 120) : null,
+        claimed_authority: typeof echo.confirmation === 'string' ? echo.confirmation.slice(0, 40) : null
+      };
+      let { error: auditError } = await supabase.from('thin_client_audit').insert([{ ...row, ...extra }]);
+      if (auditError) {
+        // The new columns may not exist yet. Keep the old row rather than lose it.
+        console.error('Audit write with minter failed, retrying without:', auditError.message);
+        await supabase.from('thin_client_audit').insert([row]);
+      }
     } catch (auditErr) {
       console.error('Audit trail write failed:', auditErr.message);
     }
@@ -159,6 +203,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       sais,
+      minter,
       node: process.env.NODE_NAME || 'echothea',
       warning: sizeWarning,
       pelago: pelagoResponse
